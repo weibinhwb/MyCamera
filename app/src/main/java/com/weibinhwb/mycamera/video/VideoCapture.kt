@@ -1,16 +1,17 @@
-package com.weibinhwb.mycamera
+package com.weibinhwb.mycamera.video
 
 import android.graphics.ImageFormat
 import android.hardware.Camera
-import android.media.MediaCodec
+import android.media.*
 import android.media.MediaCodec.CONFIGURE_FLAG_ENCODE
-import android.media.MediaCodecInfo
 import android.media.MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar
-import android.media.MediaCodecList
-import android.media.MediaFormat
 import android.util.Log
 import android.widget.FrameLayout
+import com.weibinhwb.mycamera.App
+import com.weibinhwb.mycamera.MediaData
+import com.weibinhwb.mycamera.MediaDataListener
 import java.io.IOException
+import java.util.*
 
 
 /**
@@ -19,9 +20,9 @@ import java.io.IOException
 
 
 @Suppress("DEPRECATION")
-object CameraView : Camera.PreviewCallback {
+class VideoCapture(val listener: MediaDataListener) : Camera.PreviewCallback {
 
-    private val TAG = "CameraView"
+    private val TAG = "VideoCapture"
     private lateinit var mCamera: Camera
     private lateinit var mPreview: CameraPreview
     private val mContext = App.getInstance()
@@ -48,15 +49,16 @@ object CameraView : Camera.PreviewCallback {
     }
 
     fun startRecord() {
-        initCodec()
+        initVideoCodec()
         Log.d(TAG, "startRecord")
         isRecord = true
     }
 
     fun stopRecord() {
-        releaseCodec()
-        Log.d(TAG, "stopRecord")
         isRecord = false
+        mVideoCodec.stop()
+        mVideoCodec.release()
+        Log.d(TAG, "stopRecord")
     }
 
     fun releaseCamera() {
@@ -74,16 +76,17 @@ object CameraView : Camera.PreviewCallback {
         }
     }
 
-    private lateinit var mCodec: MediaCodec
+    private lateinit var mVideoCodec: MediaCodec
+    private var mVideoTrackIndex = -1
 
-    private fun initCodec() {
+    fun initVideoCodec() {
         try {
-            mCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+            mVideoCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
         } catch (e: IOException) {
             Log.d(TAG, e.message)
         }
         val mediaCodecInfo = selectCodec(MediaFormat.MIMETYPE_VIDEO_AVC)!!
-        val colorFormat = getColorFormat(mediaCodecInfo)
+//        val colorFormat = getColorFormat(mediaCodecInfo)
         val mediaFormat: MediaFormat =
             MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, mPreview.width, mPreview.height)
 //        mediaFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0)
@@ -92,32 +95,54 @@ object CameraView : Camera.PreviewCallback {
         mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, COLOR_FormatYUV420SemiPlanar)
         mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5)
 
-        mCodec.configure(mediaFormat, null, null, CONFIGURE_FLAG_ENCODE)
-        mCodec.start()
+        mVideoCodec.configure(mediaFormat, null, null, CONFIGURE_FLAG_ENCODE)
+        mVideoCodec.start()
     }
 
 
-    private fun processCodec(input: ByteArray) {
+    private fun processVideoCodec(input: ByteArray) {
         Log.d(TAG, "start processing")
-        val inputIndex = mCodec.dequeueInputBuffer(-1)
+        val inputIndex = mVideoCodec.dequeueInputBuffer(-1)
         if (inputIndex >= 0) {
-            val inputBuffers = mCodec.getInputBuffer(inputIndex)!!
+            val inputBuffers = mVideoCodec.getInputBuffer(inputIndex)!!
             inputBuffers.clear()
             inputBuffers.put(input)
-            mCodec.queueInputBuffer(inputIndex, 0, input.size, System.currentTimeMillis(), 0)
+            Log.d(TAG, "origin: ${input.size}")
+            val currentTime = System.nanoTime() / 1000
+            mVideoCodec.queueInputBuffer(inputIndex, 0, input.size, currentTime, 0)
+            Log.d(TAG, currentTime.toString())
         }
 
-        val bufferInfo = MediaCodec.BufferInfo()
-        var outputIndex = mCodec.dequeueOutputBuffer(bufferInfo, 12000)
-        while (outputIndex >= 0) {
-            val outputBuffers = mCodec.getOutputBuffer(outputIndex)
-            outputBuffers?.let {
-                val tepByteArray = ByteArray(bufferInfo.size)
-                it.get(tepByteArray)
-                Log.d(TAG, "encoder: ${tepByteArray.size}")
+        //bufferInfo 填充Media的信息
+        var bufferInfo = MediaCodec.BufferInfo()
+        var outputIndex = mVideoCodec.dequeueOutputBuffer(bufferInfo, 12000)
+        if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED && mVideoTrackIndex == -1) {
+            listener.muxerStart(mVideoCodec.outputFormat)?.let {
+                mVideoTrackIndex = it
             }
-            mCodec.releaseOutputBuffer(outputIndex, false)
-            outputIndex = mCodec.dequeueOutputBuffer(bufferInfo, 12000)
+        }
+        while (outputIndex >= 0) {
+            val outputBuffers = mVideoCodec.getOutputBuffer(outputIndex)
+
+            if (bufferInfo.flags == MediaCodec.BUFFER_FLAG_CODEC_CONFIG) {
+                Log.e(TAG, "vedio run: BUFFER_FLAG_CODEC_CONFIG")
+                bufferInfo.size = 0
+            }
+            if (bufferInfo.size > 0) {
+                outputBuffers?.let {
+                    val bytes = ByteArray(bufferInfo.size)
+                    it.get(bytes)
+                    it.position(bufferInfo.offset)
+                    it.limit(bufferInfo.offset + bufferInfo.size)
+                    Log.e(TAG, "video presentationTimeUs : " + bufferInfo.presentationTimeUs)
+                    bufferInfo.presentationTimeUs = System.nanoTime() / 1000
+                    val data = MediaData(mVideoTrackIndex, bytes, bufferInfo)
+                    listener.put(data)
+                }
+            }
+            mVideoCodec.releaseOutputBuffer(outputIndex, false)
+            bufferInfo = MediaCodec.BufferInfo()
+            outputIndex = mVideoCodec.dequeueOutputBuffer(bufferInfo, 12000)
         }
         Log.d(TAG, "stop processing")
     }
@@ -178,14 +203,14 @@ object CameraView : Camera.PreviewCallback {
     }
 
     private fun releaseCodec() {
-        mCodec.stop()
-        mCodec.release()
+        mVideoCodec.stop()
+        mVideoCodec.release()
 
     }
 
     override fun onPreviewFrame(data: ByteArray?, camera: Camera?) {
         if (isRecord) {
-            processCodec(data!!)
+            processVideoCodec(data!!)
         }
     }
 }

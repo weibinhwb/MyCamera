@@ -1,4 +1,4 @@
-package com.weibinhwb.mycamera
+package com.weibinhwb.mycamera.video
 
 import android.content.Context
 import android.hardware.Camera

@@ -8,6 +8,7 @@ import android.support.v7.app.AppCompatActivity
 import android.view.View
 import android.widget.Button
 import android.widget.FrameLayout
+import com.weibinhwb.mycamera.video.VideoCapture
 
 
 class MainActivity : AppCompatActivity(), View.OnClickListener {
@@ -37,12 +38,12 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         }
 
         val frameLayout: FrameLayout = findViewById(R.id.camera_preview)
-        CameraView.initCamera(frameLayout)
+        MediaOperator.init(frameLayout)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        CameraView.releaseCamera()
+        MediaOperator.release()
     }
 
     private fun hasPermissions() = PERMISSIONS_REQUIRED.all {
@@ -55,10 +56,10 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         when (v!!.id) {
             R.id.button_capture ->
                 isRecord = if (!isRecord) {
-                    CameraView.startRecord()
+                    MediaOperator.start()
                     !isRecord
                 } else {
-                    CameraView.stopRecord()
+                    MediaOperator.stop()
                     !isRecord
                 }
         }
