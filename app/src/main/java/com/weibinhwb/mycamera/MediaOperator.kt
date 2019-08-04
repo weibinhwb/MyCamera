@@ -1,5 +1,6 @@
 package com.weibinhwb.mycamera
 
+import android.app.Activity
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.net.Uri
@@ -9,6 +10,7 @@ import android.widget.FrameLayout
 import com.weibinhwb.mycamera.audio.AudioCapture
 import com.weibinhwb.mycamera.video.VideoCapture
 import java.io.File
+import java.lang.ref.WeakReference
 import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.*
@@ -31,13 +33,11 @@ object MediaOperator : MediaDataListener {
 
     private var isRecord = false
 
-    private var isMuxerStart = false
-
     private val blockingQueue: ArrayBlockingQueue<MediaData> = ArrayBlockingQueue(100)
 
 
-    fun init(frameLayout: FrameLayout) {
-        mVideoCapture = VideoCapture(this)
+    fun init(frameLayout: FrameLayout, weakActivity: WeakReference<Activity>) {
+        mVideoCapture = VideoCapture(this, weakActivity)
         mAudioCapture = AudioCapture(this)
         mVideoCapture.initCamera(frameLayout)
     }

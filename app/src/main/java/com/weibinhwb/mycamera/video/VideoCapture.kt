@@ -1,17 +1,21 @@
 package com.weibinhwb.mycamera.video
 
+import android.app.Activity
 import android.graphics.ImageFormat
 import android.hardware.Camera
+import android.hardware.Camera.CameraInfo.CAMERA_FACING_BACK
 import android.media.MediaCodec
 import android.media.MediaCodec.CONFIGURE_FLAG_ENCODE
 import android.media.MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar
 import android.media.MediaFormat
 import android.util.Log
+import android.view.Surface
 import android.widget.FrameLayout
 import com.weibinhwb.mycamera.App
 import com.weibinhwb.mycamera.MediaData
 import com.weibinhwb.mycamera.MediaDataListener
 import java.io.IOException
+import java.lang.ref.WeakReference
 
 
 /**
@@ -20,7 +24,8 @@ import java.io.IOException
 
 
 @Suppress("DEPRECATION")
-class VideoCapture(private val listener: MediaDataListener) : Camera.PreviewCallback {
+class VideoCapture(private val listener: MediaDataListener, private val activity: WeakReference<Activity>) :
+    Camera.PreviewCallback {
 
     private val TAG = "VideoCapture"
     private lateinit var mCamera: Camera
@@ -41,7 +46,7 @@ class VideoCapture(private val listener: MediaDataListener) : Camera.PreviewCall
     fun initCamera(frameLayout: FrameLayout) {
         Log.d(TAG, "start initCamera")
         mCamera = getCameraInstance()!!
-        mCamera.setDisplayOrientation(90)
+        mCamera.setDisplayOrientation(getCameraPreviewOrientation(activity.get()!!, CAMERA_FACING_BACK))
         mPreview = CameraPreview(mContext, mCamera)
         mPreview.also {
             val preview: FrameLayout = frameLayout
@@ -99,15 +104,14 @@ class VideoCapture(private val listener: MediaDataListener) : Camera.PreviewCall
         } catch (e: IOException) {
             Log.d(TAG, e.message)
         }
-//        val mediaCodecInfo = selectCodec(MediaFormat.MIMETYPE_VIDEO_AVC)!!
-//        val colorFormat = getColorFormat(mediaCodecInfo)
         val mediaFormat: MediaFormat =
-            MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, mHeight, mWidth)
-//        mediaFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 0)
+            MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, mWidth, mHeight)
         mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, BIT_RATE)
         mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, FRAME_RAGE)
         mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, COLOR_FormatYUV420SemiPlanar)
         mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, I_FRAME_INTERVAL)
+        mediaFormat.setInteger(MediaFormat.KEY_WIDTH, 1280)
+        mediaFormat.setInteger(MediaFormat.KEY_HEIGHT, 720)
 
         mVideoCodec.configure(mediaFormat, null, null, CONFIGURE_FLAG_ENCODE)
         mVideoCodec.start()
@@ -148,10 +152,7 @@ class VideoCapture(private val listener: MediaDataListener) : Camera.PreviewCall
                     it.get(bytes)
                     it.position(bufferInfo.offset)
                     it.limit(bufferInfo.offset + bufferInfo.size)
-                    Log.e(TAG, "video presentationTimeUs : " + bufferInfo.presentationTimeUs)
-//                    bufferInfo.offset = 0
-//                    bufferInfo.size = input.size
-//                    bufferInfo.flags = BUFFER_FLAG_KEY_FRAME
+                    Log.d(TAG, "offset = ${bufferInfo.offset} size = ${bufferInfo.size} flags = ${bufferInfo.flags} presentationTimeUs = ${bufferInfo.presentationTimeUs}")
                     bufferInfo.presentationTimeUs = System.nanoTime() / 1000
                     val data = MediaData(mVideoTrackIndex, bytes, bufferInfo)
                     listener.put(data)
@@ -185,5 +186,32 @@ class VideoCapture(private val listener: MediaDataListener) : Camera.PreviewCall
             NV21toI420SemiPlanar(data, mYuv420Sp, mWidth, mHeight)
             processVideoCodec(mYuv420Sp)
         }
+    }
+
+    private fun getRotation(activity: Activity): Int {
+        val rotation = activity.windowManager.defaultDisplay.rotation
+        var degrees = 0
+        when (rotation) {
+            Surface.ROTATION_0 -> degrees = 0
+            Surface.ROTATION_90 -> degrees = 90
+            Surface.ROTATION_180 -> degrees = 180
+            Surface.ROTATION_270 -> degrees = 270
+        }
+        return degrees
+    }
+
+    private fun getCameraPreviewOrientation(activity: Activity, cameraId: Int): Int {
+        val info = Camera.CameraInfo()
+        Camera.getCameraInfo(cameraId, info)
+        var result: Int
+        val degrees = getRotation(activity)
+        //前置
+        if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            result = (info.orientation + degrees) % 360
+            result = (360 - result) % 360
+        } else {
+            result = (info.orientation - degrees + 360) % 360
+        }//后置
+        return result
     }
 }

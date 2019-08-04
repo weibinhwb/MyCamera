@@ -1,14 +1,17 @@
 package com.weibinhwb.mycamera
 
 import android.Manifest
+import android.app.Activity
 import android.content.pm.PackageManager
+import android.hardware.Camera
 import android.os.Bundle
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AppCompatActivity
+import android.view.Surface
 import android.view.View
 import android.widget.Button
 import android.widget.FrameLayout
-import com.weibinhwb.mycamera.video.VideoCapture
+import java.lang.ref.WeakReference
 
 
 class MainActivity : AppCompatActivity(), View.OnClickListener {
@@ -38,7 +41,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         }
 
         val frameLayout: FrameLayout = findViewById(R.id.camera_preview)
-        MediaOperator.init(frameLayout)
+        val weakActivity = WeakReference(this as Activity)
+        MediaOperator.init(frameLayout, weakActivity)
     }
 
     override fun onDestroy() {
