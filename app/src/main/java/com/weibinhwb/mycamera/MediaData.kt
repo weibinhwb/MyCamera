@@ -1,7 +1,6 @@
 package com.weibinhwb.mycamera
 
 import android.media.MediaCodec
-import java.nio.ByteBuffer
 
 /**
  * Created by weibin on 2019/8/3

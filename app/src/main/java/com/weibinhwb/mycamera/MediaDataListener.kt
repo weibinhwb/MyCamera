@@ -9,5 +9,5 @@ import android.media.MediaFormat
 
 interface MediaDataListener {
     fun put(data: MediaData)
-    fun muxerStart(mediaFormat: MediaFormat): Int?
+    fun muxerStart(mediaFormat: MediaFormat): Int
 }

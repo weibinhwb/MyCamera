@@ -50,6 +50,7 @@ object MediaOperator : MediaDataListener {
             while (true) {
                 if (!blockingQueue.isEmpty()) {
                     val data = blockingQueue.poll()
+                    Log.d(TAG, "index = ${data.index}, info = ${data.bufferInfo.size}")
                     mMuxer.writeSampleData(data.index, ByteBuffer.wrap(data.buffer), data.bufferInfo)
                 } else {
                     Thread.sleep(300)
@@ -110,10 +111,11 @@ object MediaOperator : MediaDataListener {
         blockingQueue.put(data)
     }
 
-    override fun muxerStart(mediaFormat: MediaFormat): Int? {
+    override fun muxerStart(mediaFormat: MediaFormat): Int {
         Log.d(TAG, "muxer $mMuxer")
         val ans = mMuxer.addTrack(mediaFormat)
-        if (!isMuxerStart) {
+        Log.d(TAG, "ans = $ans")
+        if (ans == 1) {
             mMuxer.start()
             isRecord = true
         }

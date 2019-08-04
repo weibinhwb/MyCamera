@@ -1,6 +1,8 @@
 package com.weibinhwb.mycamera.audio
 
 import android.media.*
+import android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM
+import android.media.MediaCodec.BUFFER_FLAG_KEY_FRAME
 import android.util.Log
 import com.weibinhwb.mycamera.MediaData
 import com.weibinhwb.mycamera.MediaDataListener
@@ -15,20 +17,20 @@ import kotlin.math.min
 class AudioCapture(val listener: MediaDataListener) {
 
     private val TAG = "AudioCapture"
-    private val mSampleRate = 44100
+    private val mSampleRate = 16000
     private val mAudioFormat = AudioFormat.ENCODING_PCM_16BIT
-    private val mChannelConfig = AudioFormat.CHANNEL_IN_STEREO
+    private val mChannelConfig = AudioFormat.CHANNEL_IN_MONO
     private val mSource = MediaRecorder.AudioSource.DEFAULT
 
     private lateinit var mAudioRecorder: AudioRecord
     private var mBufferSize: Int = 0
 
-    private lateinit var mAudioSource: ByteArray
     private var isRecord = false
 
     private lateinit var mAudioCodec: MediaCodec
-    private var mAudioTrackIndex = 0
+    private var mAudioTrackIndex = -1
 
+    private val TIME_OUT = 10000L
 
     private fun initAudio() {
         mBufferSize = AudioRecord.getMinBufferSize(mSampleRate, mChannelConfig, mAudioFormat)
@@ -37,7 +39,6 @@ class AudioCapture(val listener: MediaDataListener) {
         if (mAudioRecorder.state != AudioRecord.STATE_INITIALIZED) {
             return
         }
-        mAudioSource = ByteArray(min(4096, mBufferSize))
         mAudioRecorder.startRecording()
     }
 
@@ -46,11 +47,11 @@ class AudioCapture(val listener: MediaDataListener) {
         initAudioEncoder()
         isRecord = true
         Thread {
+            val bufferBytes = ByteArray(mBufferSize);
             while (isRecord) {
-                val size = mAudioRecorder.read(mAudioSource, 0, mAudioSource.size)
-                if (size < 0) break
-                val tempAudioSource = mAudioSource.copyOf()
-                processAudioCodec(tempAudioSource)
+                val size = mAudioRecorder.read(bufferBytes, 0, mBufferSize)
+                if (size > 0)
+                    processAudioCodec(bufferBytes, size)
             }
         }.start()
     }
@@ -74,17 +75,16 @@ class AudioCapture(val listener: MediaDataListener) {
             Log.d(TAG, e.message)
         }
         val mediaFormat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, mSampleRate, 1)
-        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 30 * 1000)
+        mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 64000)
         mediaFormat.setInteger(MediaFormat.KEY_CHANNEL_COUNT, 1)
         mediaFormat.setInteger(MediaFormat.KEY_SAMPLE_RATE, mSampleRate)
         mAudioCodec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         mAudioCodec.start()
     }
 
-    private fun processAudioCodec(input: ByteArray) {
+    private fun processAudioCodec(input: ByteArray, size: Int) {
         Log.d(TAG, "start processing")
-        val inputIndex = mAudioCodec.dequeueInputBuffer(-1)
-
+        val inputIndex = mAudioCodec.dequeueInputBuffer(TIME_OUT)
         if (inputIndex >= 0) {
             val inputBuffers = mAudioCodec.getInputBuffer(inputIndex)!!
             inputBuffers.clear()
@@ -97,11 +97,11 @@ class AudioCapture(val listener: MediaDataListener) {
 
         //bufferInfo 填充Media的信息
         var bufferInfo = MediaCodec.BufferInfo()
-        var outputIndex = mAudioCodec.dequeueOutputBuffer(bufferInfo, 12000)
+        var outputIndex = mAudioCodec.dequeueOutputBuffer(bufferInfo, TIME_OUT)
         if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED && mAudioTrackIndex == -1) {
-            listener.muxerStart(mAudioCodec.outputFormat)?.let {
-                mAudioTrackIndex = it
-            }
+            Log.d(TAG, "AudioTrackIndex = $mAudioTrackIndex")
+            mAudioTrackIndex = listener.muxerStart(mAudioCodec.outputFormat)
+            Log.d(TAG, "AudioTrackIndex = $mAudioTrackIndex")
         }
         while (outputIndex >= 0) {
             val outputBuffers = mAudioCodec.getOutputBuffer(outputIndex)
@@ -116,14 +116,19 @@ class AudioCapture(val listener: MediaDataListener) {
                     it.position(bufferInfo.offset)
                     it.limit(bufferInfo.offset + bufferInfo.size)
                     Log.e(TAG, "audio presentationTimeUs : " + bufferInfo.presentationTimeUs)
+                    Log.d(TAG, "offset = ${bufferInfo.offset} size = ${bufferInfo.size} flags = ${bufferInfo.flags} presentationTimeUs = ${bufferInfo.presentationTimeUs}")
+//                    bufferInfo.offset = 0
+//                    bufferInfo.size = input.size
+//                    bufferInfo.flags = BUFFER_FLAG_KEY_FRAME
                     bufferInfo.presentationTimeUs = System.nanoTime() / 1000
+                    Log.d(TAG, "offset = ${bufferInfo.offset} size = ${bufferInfo.size} flags = ${bufferInfo.flags} presentationTimeUs = ${bufferInfo.presentationTimeUs}")
                     val data = MediaData(mAudioTrackIndex, bytes, bufferInfo)
                     listener.put(data)
                 }
             }
             mAudioCodec.releaseOutputBuffer(outputIndex, false)
             bufferInfo = MediaCodec.BufferInfo()
-            outputIndex = mAudioCodec.dequeueOutputBuffer(bufferInfo, 12000)
+            outputIndex = mAudioCodec.dequeueOutputBuffer(bufferInfo, TIME_OUT)
         }
         Log.d(TAG, "stop processing")
     }
