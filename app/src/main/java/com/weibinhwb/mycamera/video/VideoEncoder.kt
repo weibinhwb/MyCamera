@@ -19,9 +19,9 @@ import com.weibinhwb.mycamera.utils.string
 
 
 @Suppress("DEPRECATION")
-class VideoCodec(private val listener: MediaListener) : MediaDataListener, MediaLifeCycle {
+class VideoEncoder(private val listener: MediaListener) : MediaDataListener, MediaLifeCycle {
 
-    private val TAG = "VideoCodec"
+    private val TAG = "VideoEncoder"
 
     private val FRAME_RAGE: Int = 30
     private var BIT_RATE: Int = -1
@@ -73,9 +73,7 @@ class VideoCodec(private val listener: MediaListener) : MediaDataListener, Media
 
         //bufferInfo 填充Media的信息
         var bufferInfo = MediaCodec.BufferInfo()
-        Log.d(TAG, bufferInfo.string())
         var outputIndex = mVideoCodec.dequeueOutputBuffer(bufferInfo, TIME_OUT)
-        Log.d(TAG, bufferInfo.string())
         if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED && mVideoTrackIndex == -1) {
             mVideoTrackIndex = listener.muxerStart(mVideoCodec.outputFormat)
         }

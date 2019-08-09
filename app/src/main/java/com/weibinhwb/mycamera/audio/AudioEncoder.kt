@@ -16,9 +16,9 @@ import java.io.IOException
  */
 
 
-class AudioCodec(private val listener: MediaListener) : MediaLifeCycle, MediaDataListener {
+class AudioEncoder(private val listener: MediaListener) : MediaLifeCycle, MediaDataListener {
 
-    private val TAG = "AudioCodec"
+    private val TAG = "AudioEncoder"
     private lateinit var mAudioCodec: MediaCodec
     private val mSampleRate = 16000
     private var mAudioTrackIndex = -1

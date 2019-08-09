@@ -6,12 +6,12 @@ import android.media.MediaMuxer
 import android.util.Log
 import android.widget.FrameLayout
 import com.weibinhwb.mycamera.audio.AudioCapture
-import com.weibinhwb.mycamera.audio.AudioCodec
+import com.weibinhwb.mycamera.audio.AudioEncoder
 import com.weibinhwb.mycamera.utils.MEDIA_TYPE_VIDEO
 import com.weibinhwb.mycamera.utils.getOutputMediaFile
 import com.weibinhwb.mycamera.utils.string
 import com.weibinhwb.mycamera.video.CameraCapture
-import com.weibinhwb.mycamera.video.VideoCodec
+import com.weibinhwb.mycamera.video.VideoEncoder
 import java.lang.ref.WeakReference
 import java.nio.ByteBuffer
 import java.util.concurrent.ArrayBlockingQueue
@@ -28,16 +28,17 @@ class MuxerOperation(
 
     private val TAG = "MuxerOperation"
 
+    val mStorePath = getOutputMediaFile(MEDIA_TYPE_VIDEO)!!.absolutePath
     private val mMuxer: MediaMuxer =
         MediaMuxer(
-            getOutputMediaFile(MEDIA_TYPE_VIDEO)!!.absolutePath,
+            mStorePath,
             MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4
         )
 
-    private lateinit var mVideoCodec: VideoCodec
+    private lateinit var mVideoEncoder: VideoEncoder
     private lateinit var mCameraCapture: CameraCapture
     private lateinit var mAudioCapture: AudioCapture
-    private lateinit var mAudioCodec: AudioCodec
+    private lateinit var mAudioEncoder: AudioEncoder
 
     private val blockingQueue: ArrayBlockingQueue<MediaData> = ArrayBlockingQueue(100)
 
@@ -53,20 +54,20 @@ class MuxerOperation(
     }
 
     override fun prepare() {
-        mVideoCodec = VideoCodec(this@MuxerOperation)
-        mAudioCodec = AudioCodec(this@MuxerOperation)
-        mAudioCapture = AudioCapture(mAudioCodec)
-        mCameraCapture = CameraCapture(weakActivity, frameLayout, mVideoCodec)
+        mVideoEncoder = VideoEncoder(this@MuxerOperation)
+        mAudioEncoder = AudioEncoder(this@MuxerOperation)
+        mAudioCapture = AudioCapture(mAudioEncoder)
+        mCameraCapture = CameraCapture(weakActivity, frameLayout, mVideoEncoder)
 
         mCameraCapture.prepare()
     }
 
     override fun start() {
-        mVideoCodec.prepare()
-        mVideoCodec.start()
+        mVideoEncoder.prepare()
+        mVideoEncoder.start()
 
-        mAudioCodec.prepare()
-        mAudioCodec.start()
+        mAudioEncoder.prepare()
+        mAudioEncoder.start()
 
         mAudioCapture.prepare()
         mAudioCapture.start()
@@ -97,7 +98,7 @@ class MuxerOperation(
         mCameraCapture.stop()
         mAudioCapture.stop()
         mAudioCapture.stop()
-        mAudioCodec.stop()
+        mAudioEncoder.stop()
     }
 
     override fun destroy() {

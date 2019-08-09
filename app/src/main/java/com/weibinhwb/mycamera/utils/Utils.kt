@@ -1,5 +1,6 @@
 package com.weibinhwb.mycamera.utils
 
+import android.annotation.SuppressLint
 import android.media.MediaCodec
 import android.net.Uri
 import android.os.Environment
@@ -28,6 +29,7 @@ fun getOutputMediaFileUri(type: Int): Uri {
     return Uri.fromFile(getOutputMediaFile(type))
 }
 
+@SuppressLint("SimpleDateFormat")
 fun getOutputMediaFile(type: Int): File? {
 
     val mediaStorageDir = File(

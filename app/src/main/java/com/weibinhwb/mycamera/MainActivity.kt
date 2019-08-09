@@ -2,6 +2,7 @@ package com.weibinhwb.mycamera
 
 import android.Manifest
 import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.support.v4.content.ContextCompat
@@ -16,6 +17,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     private val TAG = "MainActivity"
     private lateinit var recordButton: Button
+    private lateinit var searchButton: Button
 
     private val PERMISSIONS_REQUEST_CODE = 10
     private val PERMISSIONS_REQUIRED = arrayOf(
@@ -33,6 +35,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
         recordButton = findViewById(R.id.button_capture)
         recordButton.setOnClickListener(this)
+
+        searchButton = findViewById(R.id.search_video)
+        searchButton.setOnClickListener(this)
 
         if (!hasPermissions()) {
             requestPermissions(PERMISSIONS_REQUIRED, PERMISSIONS_REQUEST_CODE)
@@ -65,6 +70,11 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                     MuxerOperation.RECORD = true
                     muxerOperation.start()
                 }
+            R.id.search_video -> {
+                val intent = Intent(this, VideoActivity::class.java)
+                intent.putExtra("path", muxerOperation.mStorePath)
+                startActivity(intent)
+            }
         }
     }
 }
