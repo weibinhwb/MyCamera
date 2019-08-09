@@ -56,7 +56,7 @@ class VideoCodec(private val listener: MediaListener) : MediaDataListener, Media
     }
 
     override fun pushToCodec(array: ByteArray) {
-        NV21toI420SemiPlanar(mYuv420Sp, array, mWidth, mHeight)
+        NV21toI420SemiPlanar(array, mYuv420Sp, mWidth, mHeight)
         processVideoCodec(mYuv420Sp)
     }
 

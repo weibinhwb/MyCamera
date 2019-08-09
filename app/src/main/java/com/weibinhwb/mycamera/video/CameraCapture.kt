@@ -50,7 +50,6 @@ class CameraCapture(
             parameters = tempParameter
             setPreviewCallback(this@CameraCapture)
             frameLayout.addView(this@CameraCapture)
-//            startPreview()
         }
     }
 
@@ -59,7 +58,7 @@ class CameraCapture(
     }
 
     override fun stop() {
-//        mCamera.stopPreview()
+
     }
 
     override fun destroy() {

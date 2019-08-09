@@ -26,13 +26,13 @@ class AudioCapture(private val listener: MediaDataListener) : MediaLifeCycle {
 
 
     override fun start() {
-        mBufferSize = AudioRecord.getMinBufferSize(mSampleRate, mChannelConfig, mAudioFormat)
-        mAudioRecorder = AudioRecord(mSource, mSampleRate, mChannelConfig, mAudioFormat, mBufferSize * 2)
-        if (mAudioRecorder.state != AudioRecord.STATE_INITIALIZED) {
-            throw RuntimeException("运行错误")
-        }
-        mAudioRecorder.startRecording()
         Thread {
+            mBufferSize = AudioRecord.getMinBufferSize(mSampleRate, mChannelConfig, mAudioFormat)
+            mAudioRecorder = AudioRecord(mSource, mSampleRate, mChannelConfig, mAudioFormat, mBufferSize * 2)
+            if (mAudioRecorder.state != AudioRecord.STATE_INITIALIZED) {
+                throw RuntimeException("运行错误")
+            }
+            mAudioRecorder.startRecording()
             val bufferBytes = ByteArray(mBufferSize);
             while (MuxerOperation.RECORD) {
                 val size = mAudioRecorder.read(bufferBytes, 0, mBufferSize)
