@@ -1,5 +1,6 @@
 package com.weibinhwb.mycamera.audio
 
+import android.media.AudioFormat
 import android.media.MediaCodec
 import android.media.MediaFormat
 import android.util.Log
@@ -34,8 +35,6 @@ class AudioEncoder(private val listener: MediaListener) : MediaLifeCycle, MediaD
         }
         val mediaFormat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, mSampleRate, 1)
         mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 64000)
-        mediaFormat.setInteger(MediaFormat.KEY_CHANNEL_COUNT, 1)
-        mediaFormat.setInteger(MediaFormat.KEY_SAMPLE_RATE, mSampleRate)
         mAudioCodec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         mAudioCodec.start()
     }

@@ -18,7 +18,7 @@ class AudioCapture(private val listener: MediaDataListener) : MediaLifeCycle {
     private val TAG = "AudioCapture"
     private val mSampleRate = 16000
     private val mAudioFormat = AudioFormat.ENCODING_PCM_16BIT
-    private val mChannelConfig = AudioFormat.CHANNEL_IN_MONO
+    private val mChannelConfig = 1
     private val mSource = MediaRecorder.AudioSource.DEFAULT
 
     private lateinit var mAudioRecorder: AudioRecord
@@ -28,7 +28,7 @@ class AudioCapture(private val listener: MediaDataListener) : MediaLifeCycle {
     override fun start() {
         Thread {
             mBufferSize = AudioRecord.getMinBufferSize(mSampleRate, mChannelConfig, mAudioFormat)
-            mAudioRecorder = AudioRecord(mSource, mSampleRate, mChannelConfig, mAudioFormat, mBufferSize * 2)
+            mAudioRecorder = AudioRecord(mSource, mSampleRate, mChannelConfig, mAudioFormat, mBufferSize )
             if (mAudioRecorder.state != AudioRecord.STATE_INITIALIZED) {
                 throw RuntimeException("运行错误")
             }
