@@ -7,17 +7,18 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AppCompatActivity
+import android.util.Log
 import android.view.View
-import android.widget.Button
+import android.view.WindowManager
 import android.widget.FrameLayout
+import com.weibinhwb.mycamera.view.RecorderButton
 import java.lang.ref.WeakReference
 
 
 class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     private val TAG = "MainActivity"
-    private lateinit var recordButton: Button
-    private lateinit var searchButton: Button
+    private lateinit var record: RecorderButton
 
     private val PERMISSIONS_REQUEST_CODE = 10
     private val PERMISSIONS_REQUIRED = arrayOf(
@@ -32,12 +33,13 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_FULLSCREEN,
+            WindowManager.LayoutParams.FLAG_FULLSCREEN
+        )
 
-        recordButton = findViewById(R.id.button_capture)
-        recordButton.setOnClickListener(this)
-
-        searchButton = findViewById(R.id.search_video)
-        searchButton.setOnClickListener(this)
+        record = findViewById(R.id.recorderButton)
+        record.setOnClickListener(this)
 
         if (!hasPermissions()) {
             requestPermissions(PERMISSIONS_REQUIRED, PERMISSIONS_REQUEST_CODE)
@@ -46,6 +48,13 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         val frameLayout: FrameLayout = findViewById(R.id.camera_preview)
         val weakActivity = WeakReference(this as Activity)
         muxerOperation = MuxerOperation(weakActivity, frameLayout)
+
+        val yuvHelper = YuvHelper()
+        Log.d("weibin", yuvHelper.function())
+    }
+
+    override fun onResume() {
+        super.onResume()
         muxerOperation.prepare()
     }
 
@@ -62,20 +71,18 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     override fun onClick(v: View?) {
         when (v!!.id) {
-            R.id.button_capture ->
+            R.id.recorderButton -> {
                 if (MuxerOperation.RECORD) {
                     MuxerOperation.RECORD = false
                     muxerOperation.stop()
+                    val intent = Intent(this, VideoActivity::class.java)
+                    intent.putExtra("path", muxerOperation.mStorePath)
+                    startActivity(intent)
                 } else {
                     MuxerOperation.RECORD = true
                     muxerOperation.start()
                 }
-            R.id.search_video -> {
-                val intent = Intent(this, VideoActivity::class.java)
-                intent.putExtra("path", muxerOperation.mStorePath)
-                startActivity(intent)
             }
         }
     }
 }
-

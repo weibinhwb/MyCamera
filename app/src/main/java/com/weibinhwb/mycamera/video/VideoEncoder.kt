@@ -10,7 +10,6 @@ import com.weibinhwb.mycamera.MediaDataListener
 import com.weibinhwb.mycamera.MediaLifeCycle
 import com.weibinhwb.mycamera.MediaListener
 import com.weibinhwb.mycamera.utils.getPresentationTimeUs
-import com.weibinhwb.mycamera.utils.string
 
 
 /**
@@ -30,12 +29,14 @@ class VideoEncoder(private val listener: MediaListener) : MediaDataListener, Med
     private val mWidth = 1280
     private val mHeight = 720
     private val TIME_OUT = 10000L
-    private lateinit var mYuv420Sp: ByteArray
+    private lateinit var mI420Yuv: ByteArray
+    private lateinit var mYuvRotate: ByteArray
     private lateinit var mVideoCodec: MediaCodec
     private var mVideoTrackIndex = -1
 
     override fun start() {
-        mYuv420Sp = ByteArray(mWidth * mHeight * 3 / 2)
+        mI420Yuv = ByteArray(mWidth * mHeight * 3 / 2)
+        mYuvRotate = ByteArray(mWidth * mHeight * 3 / 2)
         BIT_RATE = mWidth * mHeight * 3 * 8 * FRAME_RAGE / 256
         val mediaFormat: MediaFormat =
             MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, mWidth, mHeight)
@@ -52,12 +53,19 @@ class VideoEncoder(private val listener: MediaListener) : MediaDataListener, Med
 
     override fun stop() {
         mVideoCodec.stop()
+        mVideoTrackIndex = -1
+    }
+
+    override fun destroy() {
         mVideoCodec.release()
     }
 
-    override fun pushToCodec(array: ByteArray) {
-        NV21toI420SemiPlanar(array, mYuv420Sp, mWidth, mHeight)
-        processVideoCodec(mYuv420Sp)
+    override fun pushToCodec(array: ByteArray, degree: Int) {
+//        YuvHelper.nv21ToI420(array, mI420Yuv, mWidth, mHeight)
+        NV21toI420SemiPlanar(array, mI420Yuv, mWidth, mHeight)
+//        YuvHelper.i420Rotate(mI420Yuv, mYuvRotate, mWidth, mHeight, degree)
+        mYuvRotate = rotateYUVDegree90(mI420Yuv, mWidth, mHeight)
+        processVideoCodec(mYuvRotate)
     }
 
     private fun processVideoCodec(input: ByteArray) {
@@ -103,5 +111,31 @@ class VideoEncoder(private val listener: MediaListener) : MediaDataListener, Med
             i420bytes[i + 1] = nv21bytes[i]
             i += 2
         }
+    }
+
+    private fun rotateYUVDegree90(data: ByteArray, imageWidth: Int, imageHeight: Int): ByteArray {
+        val yuv = ByteArray(imageWidth * imageHeight * 3 / 2)
+        // Rotate the Y luma
+        var i = 0
+        for (x in 0 until imageWidth) {
+            for (y in 0 until imageHeight) {
+                yuv[i] = data[y * imageWidth + x]
+                i++
+            }
+        }
+        // Rotate the U and V color components
+        i = imageWidth * imageHeight * 3 / 2 - 1
+        var x = imageWidth - 1
+        while (x > 0) {
+            for (y in 0 until imageHeight / 2) {
+                yuv[i] = data[imageWidth * imageHeight + y * imageWidth + x]
+                i--
+                yuv[i] = data[imageWidth * imageHeight + y * imageWidth + (x - 1)]
+                i--
+            }
+            x = x - 2
+        }
+
+        return yuv
     }
 }

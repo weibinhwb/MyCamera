@@ -9,7 +9,6 @@ import com.weibinhwb.mycamera.audio.AudioCapture
 import com.weibinhwb.mycamera.audio.AudioEncoder
 import com.weibinhwb.mycamera.utils.MEDIA_TYPE_VIDEO
 import com.weibinhwb.mycamera.utils.getOutputMediaFile
-import com.weibinhwb.mycamera.utils.string
 import com.weibinhwb.mycamera.video.CameraCapture
 import com.weibinhwb.mycamera.video.VideoEncoder
 import java.lang.ref.WeakReference
@@ -28,12 +27,8 @@ class MuxerOperation(
 
     private val TAG = "MuxerOperation"
 
-    val mStorePath = getOutputMediaFile(MEDIA_TYPE_VIDEO)!!.absolutePath
-    private val mMuxer: MediaMuxer =
-        MediaMuxer(
-            mStorePath,
-            MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4
-        )
+    lateinit var mStorePath: String
+    private lateinit var mMuxer: MediaMuxer
 
     private lateinit var mVideoEncoder: VideoEncoder
     private lateinit var mCameraCapture: CameraCapture
@@ -54,10 +49,17 @@ class MuxerOperation(
     }
 
     override fun prepare() {
+        mStorePath = getOutputMediaFile(MEDIA_TYPE_VIDEO)!!.absolutePath
+        mMuxer = MediaMuxer(
+            mStorePath,
+            MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4
+        )
         mVideoEncoder = VideoEncoder(this@MuxerOperation)
         mAudioEncoder = AudioEncoder(this@MuxerOperation)
         mAudioCapture = AudioCapture(mAudioEncoder)
-        mCameraCapture = CameraCapture(weakActivity, frameLayout, mVideoEncoder)
+        mCameraCapture = CameraCapture(weakActivity, mVideoEncoder)
+
+        frameLayout.addView(mCameraCapture)
 
         mCameraCapture.prepare()
     }
@@ -78,9 +80,6 @@ class MuxerOperation(
             while (true) {
                 if (!blockingQueue.isEmpty()) {
                     val data = blockingQueue.poll()
-                    Log.d("weibin", "data.buffer size = ${data.buffer.size}")
-                    Log.d("weibin", "data.index = ${data.index}")
-                    Log.d("weibin", "data.bufferInfo = ${data.bufferInfo.string()}")
                     mMuxer.writeSampleData(data.index, ByteBuffer.wrap(data.buffer), data.bufferInfo)
                 } else {
                     Thread.sleep(300)
@@ -90,19 +89,21 @@ class MuxerOperation(
                 }
             }
             mMuxer.stop()
-            mMuxer.release()
         }.start()
+        Log.d("dd", "start")
     }
 
     override fun stop() {
-        mCameraCapture.stop()
-        mAudioCapture.stop()
+        frameLayout.removeAllViews()
         mAudioCapture.stop()
         mAudioEncoder.stop()
+        mVideoEncoder.stop()
+        mCameraCapture.stop()
+        blockingQueue.clear()
     }
 
     override fun destroy() {
-        mCameraCapture.destroy()
+        mMuxer.release()
     }
 
 

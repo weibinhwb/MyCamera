@@ -7,7 +7,6 @@ import android.util.Log
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
-import android.widget.FrameLayout
 import com.weibinhwb.mycamera.MediaDataListener
 import com.weibinhwb.mycamera.MediaLifeCycle
 import com.weibinhwb.mycamera.MuxerOperation
@@ -22,15 +21,15 @@ import java.lang.ref.WeakReference
 @Suppress("DEPRECATION")
 class CameraCapture(
     private val weakActivity: WeakReference<Activity>,
-    private val frameLayout: FrameLayout,
     private val listener: MediaDataListener
 ) : MediaLifeCycle, Camera.PreviewCallback, SurfaceView(weakActivity.get()!!),
     SurfaceHolder.Callback {
 
     private val TAG = "CameraCapture"
-    private val mCamera = getCameraInstance()!!
+    private lateinit var mCamera: Camera
     private val mWidth = 1280
     private val mHeight = 720
+    private var degree: Int =-1
 
     private val mHolder: SurfaceHolder = holder.apply {
         addCallback(this@CameraCapture)
@@ -38,8 +37,9 @@ class CameraCapture(
     }
 
     override fun prepare() {
+        mCamera = getCameraInstance()!!
         mCamera.apply {
-            val degree = getCameraPreviewOrientation(
+            degree = getCameraPreviewOrientation(
                 weakActivity.get()!!,
                 Camera.CameraInfo.CAMERA_FACING_BACK
             )
@@ -49,7 +49,6 @@ class CameraCapture(
             tempParameter.setPreviewSize(mWidth, mHeight)
             parameters = tempParameter
             setPreviewCallback(this@CameraCapture)
-            frameLayout.addView(this@CameraCapture)
         }
     }
 
@@ -58,16 +57,14 @@ class CameraCapture(
     }
 
     override fun stop() {
-
+        mCamera.stopPreview()
+//        mCamera.release()
     }
 
-    override fun destroy() {
-        mCamera.release()
-    }
 
     override fun onPreviewFrame(data: ByteArray?, camera: Camera?) {
         if (MuxerOperation.RECORD && data != null) {
-            listener.pushToCodec(data)
+            listener.pushToCodec(data, degree)
         }
     }
 
@@ -83,7 +80,7 @@ class CameraCapture(
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
-
+        mCamera.stopPreview()
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, w: Int, h: Int) {
@@ -125,13 +122,12 @@ class CameraCapture(
         Camera.getCameraInfo(cameraId, info)
         var result: Int
         val degrees = getRotation(activity)
-        //前置
         if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
             result = (info.orientation + degrees) % 360
             result = (360 - result) % 360
         } else {
             result = (info.orientation - degrees + 360) % 360
-        }//后置
+        }
         return result
     }
 

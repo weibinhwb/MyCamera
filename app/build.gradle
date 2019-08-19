@@ -13,6 +13,19 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+        externalNativeBuild {
+            cmake {
+                cFlags ""
+                cppFlags ""
+                //指定需要编译的cpu架构
+                abiFilters "armeabi-v7a"
+                //指定需要编译的模块(如Cmake中配置了生成native-lib、native-lib2)
+                //默认按照cmake的配置编译所有
+                //这里指定只编译 native-lib 模块
+                //targets "native-lib"
+            }
+        }
     }
     buildTypes {
         release {
@@ -20,6 +33,13 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    externalNativeBuild {
+        cmake {
+            //指定脚本路径 当前build.gradle文件的相对路径
+            path "CMakeLists.txt"
+        }
+    }
+
 }
 
 dependencies {

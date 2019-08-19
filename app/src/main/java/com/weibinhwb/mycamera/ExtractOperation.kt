@@ -1,13 +1,8 @@
 package com.weibinhwb.mycamera
 
-import android.media.MediaCodec
-import android.media.MediaExtractor
-import android.media.MediaFormat
-import android.util.Log
 import android.view.Surface
 import com.weibinhwb.mycamera.audio.AudioDecoder
 import com.weibinhwb.mycamera.video.VideoDecoder
-import java.nio.ByteBuffer
 
 /**
  * Created by weibin on 2019/8/9
@@ -31,8 +26,8 @@ class ExtractOperation(private val surface: Surface, private val filePath: Strin
         mAudioDecoder.start()
     }
 
-
     override fun stop() {
-
+        mVideoDecoder.stop()
+        mAudioDecoder.stop()
     }
 }

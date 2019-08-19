@@ -3,10 +3,11 @@ package com.weibinhwb.mycamera.audio
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.util.Log
 import com.weibinhwb.mycamera.MediaDataListener
 import com.weibinhwb.mycamera.MediaLifeCycle
 import com.weibinhwb.mycamera.MuxerOperation
-import java.lang.RuntimeException
+import kotlin.math.min
 
 /**
  * Created by weibin on 2019/8/3
@@ -16,9 +17,13 @@ import java.lang.RuntimeException
 class AudioCapture(private val listener: MediaDataListener) : MediaLifeCycle {
 
     private val TAG = "AudioCapture"
-    private val mSampleRate = 16000
+    //采样率，44100在所有的机器都可以保证运行
+    private val mSampleRate = 44100
+    //量化宽度
     private val mAudioFormat = AudioFormat.ENCODING_PCM_16BIT
-    private val mChannelConfig = 1
+    //通道，双声道的时候，声音特别低。超低音
+    private val mChannelConfig = AudioFormat.CHANNEL_IN_MONO
+    //声音来源
     private val mSource = MediaRecorder.AudioSource.DEFAULT
 
     private lateinit var mAudioRecorder: AudioRecord
@@ -28,7 +33,11 @@ class AudioCapture(private val listener: MediaDataListener) : MediaLifeCycle {
     override fun start() {
         Thread {
             mBufferSize = AudioRecord.getMinBufferSize(mSampleRate, mChannelConfig, mAudioFormat)
-            mAudioRecorder = AudioRecord(mSource, mSampleRate, mChannelConfig, mAudioFormat, mBufferSize )
+            mBufferSize = min(mBufferSize, 4 * 1024)
+            Log.d(TAG, "mBufferSize = $mBufferSize")
+
+            //创建AudioRecorder
+            mAudioRecorder = AudioRecord(mSource, mSampleRate, mChannelConfig, mAudioFormat, mBufferSize)
             if (mAudioRecorder.state != AudioRecord.STATE_INITIALIZED) {
                 throw RuntimeException("运行错误")
             }

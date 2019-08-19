@@ -6,5 +6,11 @@ package com.weibinhwb.mycamera
 
 
 interface MediaDataListener {
-    fun pushToCodec(array: ByteArray)
+    fun pushToCodec(array: ByteArray, degree: Int) {
+
+    }
+
+    fun pushToCodec(array: ByteArray) {
+
+    }
 }

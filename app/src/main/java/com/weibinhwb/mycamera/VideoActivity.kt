@@ -5,6 +5,7 @@ import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import android.view.WindowManager
 
 class VideoActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
@@ -14,6 +15,10 @@ class VideoActivity : AppCompatActivity(), SurfaceHolder.Callback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_video)
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_FULLSCREEN,
+            WindowManager.LayoutParams.FLAG_FULLSCREEN
+        )
         val surfaceView: SurfaceView = findViewById(R.id.video_surface)
         surfaceView.holder.addCallback(this)
     }
