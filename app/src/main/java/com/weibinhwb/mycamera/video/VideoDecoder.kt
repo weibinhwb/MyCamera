@@ -7,6 +7,8 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.Surface
 import com.weibinhwb.mycamera.MediaLifeCycle
+import java.io.File
+import java.io.FileInputStream
 
 /**
  * Created by weibin on 2019/8/9
@@ -25,7 +27,10 @@ class VideoDecoder(private val surface: Surface, private val filePath: String) :
     override fun start() {
         Thread {
             mExtractor = MediaExtractor()
-            mExtractor.setDataSource(filePath)
+            val file = File(filePath)
+            val fis = FileInputStream(file)
+            val fd = fis.fd
+            mExtractor.setDataSource(fd)
             for (i in 0 until mExtractor.trackCount) {
                 val format = mExtractor.getTrackFormat(i)
                 val mime = format.getString(MediaFormat.KEY_MIME)
@@ -64,6 +69,7 @@ class VideoDecoder(private val surface: Surface, private val filePath: String) :
                     outputIndex = mVideoCodec.dequeueOutputBuffer(bufferInfo, TIME_OUT)
                 }
             }
+            fis.close()
             mExtractor.unselectTrack(mTrackIndex)
         }.start()
     }

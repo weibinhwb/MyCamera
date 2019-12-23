@@ -1,12 +1,17 @@
 package com.weibinhwb.mycamera.view
 
+import android.animation.ValueAnimator
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
 import android.util.Log
+import android.view.MotionEvent
 import android.view.View
 import com.weibinhwb.mycamera.R
+import com.weibinhwb.mycamera.utils.LogUtil
 import kotlin.math.min
 
 /**
@@ -19,34 +24,48 @@ class RecorderButton @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-    private var mSPaint: Paint? = null
-    private var mBPaint: Paint? = null
+    private val mSmallCirclePaint = Paint()
+    private val mBigCirclePaint = Paint()
+    private val mOutlinePaint = Paint()
 
+    //圆心坐标x
     private var mCenterX: Int = 0
-
+    //圆心坐标y
     private var mCenterY: Int = 0
+    //最小的圆的
+    private var mRadius: Int
 
-    private val mRadius: Int
+    private val mGap = 30
 
-    private val mGap = 20
+    private val valueAnimator: ValueAnimator
+    private var mDeltaRadius: Float = 0.0f
+
+    private var isDown = false
 
     init {
         val typedArray = context.obtainStyledAttributes(R.styleable.RecorderButton)
         mRadius = typedArray.getInt(R.styleable.RecorderButton_record_radius, 40)
         typedArray.recycle()
-        init()
-    }
 
-    private fun init() {
-        mBPaint = Paint()
-        mBPaint!!.color = -0x11232324
-        mBPaint!!.style = Paint.Style.FILL
-        mBPaint!!.isAntiAlias = true
+        mBigCirclePaint.color = -0x11232324
+        mBigCirclePaint.style = Paint.Style.FILL
+        mBigCirclePaint.isAntiAlias = true
 
-        mSPaint = Paint()
-        mSPaint!!.color = -0x1
-        mSPaint!!.style = Paint.Style.FILL
-        mSPaint!!.isAntiAlias = true
+        mSmallCirclePaint.color = -0x1
+        mSmallCirclePaint.style = Paint.Style.FILL
+        mSmallCirclePaint.isAntiAlias = true
+
+        mOutlinePaint.color = Color.GREEN
+        mOutlinePaint.style = Paint.Style.STROKE
+        mOutlinePaint.isAntiAlias = true
+
+        valueAnimator = ValueAnimator.ofFloat(0.0f, mGap.toFloat())
+        valueAnimator.duration = 2000
+        valueAnimator.addUpdateListener {
+            mDeltaRadius = it.animatedValue as Float
+            LogUtil.d(this.javaClass.name, "radius = $mDeltaRadius")
+            invalidate()
+        }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -71,10 +90,69 @@ class RecorderButton @JvmOverloads constructor(
         setMeasuredDimension(size, size)
     }
 
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        canvas.drawCircle(mCenterX.toFloat(), mCenterY.toFloat(), (mRadius + mGap).toFloat(), mBPaint!!)
-        canvas.drawCircle(mCenterX.toFloat(), mCenterY.toFloat(), mRadius.toFloat(), mSPaint!!)
+        canvas.drawCircle(
+            mCenterX.toFloat(),
+            mCenterY.toFloat(),
+            (mRadius + mGap).toFloat(),
+            mBigCirclePaint
+        )
+        canvas.drawCircle(
+            mCenterX.toFloat(),
+            mCenterY.toFloat(),
+            mRadius.toFloat() + mDeltaRadius,
+            mSmallCirclePaint
+        )
+        if (isDown) {
+            canvas.drawCircle(
+                mCenterX.toFloat(),
+                mCenterY.toFloat(),
+                (mRadius + mGap).toFloat(),
+                mOutlinePaint
+            )
+        }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
+    override fun onTouchEvent(event: MotionEvent?): Boolean {
+        when (event?.action) {
+            MotionEvent.ACTION_DOWN -> {
+                LogUtil.d(this.javaClass.name, "down")
+                valueAnimator.start()
+                mRadius += 20
+                isDown = true
+                callPress()
+                invalidate()
+            }
+            MotionEvent.ACTION_MOVE -> {
+                LogUtil.d(this.javaClass.name, "move")
+            }
+            MotionEvent.ACTION_UP -> {
+                LogUtil.d(this.javaClass.name, "up")
+                valueAnimator.pause()
+                mDeltaRadius = 0.0f
+                mRadius -= 20
+                isDown = false
+                callPress()
+                invalidate()
+            }
+        }
+        return true
+    }
+
+    private var mPressListener: OnPressListener? = null
+
+    private fun callPress() {
+        mPressListener?.press()
+    }
+
+    fun setOnPressListener(listener: OnPressListener) {
+        mPressListener = listener
+    }
+
+    interface OnPressListener {
+        fun press()
+    }
 }

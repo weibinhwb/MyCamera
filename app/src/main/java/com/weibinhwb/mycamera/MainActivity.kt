@@ -8,17 +8,16 @@ import android.os.Bundle
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
-import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
 import com.weibinhwb.mycamera.view.RecorderButton
 import java.lang.ref.WeakReference
 
 
-class MainActivity : AppCompatActivity(), View.OnClickListener {
+class MainActivity : AppCompatActivity() {
 
     private val TAG = "MainActivity"
-    private lateinit var record: RecorderButton
+    private lateinit var mRecordButton: RecorderButton
 
     private val PERMISSIONS_REQUEST_CODE = 10
     private val PERMISSIONS_REQUIRED = arrayOf(
@@ -38,9 +37,21 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             WindowManager.LayoutParams.FLAG_FULLSCREEN
         )
 
-        record = findViewById(R.id.recorderButton)
-        record.setOnClickListener(this)
-
+        mRecordButton = findViewById(R.id.recorderButton)
+        mRecordButton.setOnPressListener(object : RecorderButton.OnPressListener {
+            override fun press() {
+                if (MuxerOperation.RECORD) {
+                    MuxerOperation.RECORD = false
+                    muxerOperation.stop()
+                    val intent = Intent(this@MainActivity, VideoActivity::class.java)
+                    intent.putExtra("path", muxerOperation.mStorePath)
+                    startActivity(intent)
+                } else {
+                    MuxerOperation.RECORD = true
+                    muxerOperation.start()
+                }
+            }
+        })
         if (!hasPermissions()) {
             requestPermissions(PERMISSIONS_REQUIRED, PERMISSIONS_REQUEST_CODE)
         }
@@ -48,9 +59,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         val frameLayout: FrameLayout = findViewById(R.id.camera_preview)
         val weakActivity = WeakReference(this as Activity)
         muxerOperation = MuxerOperation(weakActivity, frameLayout)
-
-        val yuvHelper = YuvHelper()
-        Log.d("weibin", yuvHelper.function())
     }
 
     override fun onResume() {
@@ -67,22 +75,5 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         ContextCompat.checkSelfPermission(
             this, it
         ) == PackageManager.PERMISSION_GRANTED
-    }
-
-    override fun onClick(v: View?) {
-        when (v!!.id) {
-            R.id.recorderButton -> {
-                if (MuxerOperation.RECORD) {
-                    MuxerOperation.RECORD = false
-                    muxerOperation.stop()
-                    val intent = Intent(this, VideoActivity::class.java)
-                    intent.putExtra("path", muxerOperation.mStorePath)
-                    startActivity(intent)
-                } else {
-                    MuxerOperation.RECORD = true
-                    muxerOperation.start()
-                }
-            }
-        }
     }
 }

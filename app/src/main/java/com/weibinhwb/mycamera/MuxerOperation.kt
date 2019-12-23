@@ -7,6 +7,7 @@ import android.util.Log
 import android.widget.FrameLayout
 import com.weibinhwb.mycamera.audio.AudioCapture
 import com.weibinhwb.mycamera.audio.AudioEncoder
+import com.weibinhwb.mycamera.utils.LogUtil
 import com.weibinhwb.mycamera.utils.MEDIA_TYPE_VIDEO
 import com.weibinhwb.mycamera.utils.getOutputMediaFile
 import com.weibinhwb.mycamera.video.CameraCapture
@@ -34,6 +35,7 @@ class MuxerOperation(
     private lateinit var mCameraCapture: CameraCapture
     private lateinit var mAudioCapture: AudioCapture
     private lateinit var mAudioEncoder: AudioEncoder
+    private var countMediaFormat = 0
 
     private val blockingQueue: ArrayBlockingQueue<MediaData> = ArrayBlockingQueue(100)
 
@@ -54,6 +56,7 @@ class MuxerOperation(
             mStorePath,
             MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4
         )
+        LogUtil.d(TAG, "path = $mStorePath")
         mVideoEncoder = VideoEncoder(this@MuxerOperation)
         mAudioEncoder = AudioEncoder(this@MuxerOperation)
         mAudioCapture = AudioCapture(mAudioEncoder)
@@ -76,20 +79,6 @@ class MuxerOperation(
 
         mCameraCapture.start()
 
-        Thread {
-            while (true) {
-                if (!blockingQueue.isEmpty()) {
-                    val data = blockingQueue.poll()
-                    mMuxer.writeSampleData(data.index, ByteBuffer.wrap(data.buffer), data.bufferInfo)
-                } else {
-                    Thread.sleep(300)
-                }
-                if (!RECORD && blockingQueue.isEmpty()) {
-                    break
-                }
-            }
-            mMuxer.stop()
-        }.start()
         Log.d("dd", "start")
     }
 
@@ -113,11 +102,31 @@ class MuxerOperation(
 
     override fun muxerStart(mediaFormat: MediaFormat): Int {
         Log.d(TAG, "muxer $mMuxer")
-        val ans = mMuxer.addTrack(mediaFormat)
-        Log.d(TAG, "ans = $ans")
-        if (ans == 1) {
-            mMuxer.start()
+        val result = mMuxer.addTrack(mediaFormat)
+        if (countMediaFormat == 1) {
+            realMuxerStart()
         }
-        return ans
+        countMediaFormat++
+        return result
+    }
+
+    private fun realMuxerStart() {
+        Thread {
+            mMuxer.start()
+            while (true) {
+                if (!blockingQueue.isEmpty()) {
+                    val data = blockingQueue.poll()
+                    mMuxer.writeSampleData(
+                        data.index,
+                        ByteBuffer.wrap(data.buffer),
+                        data.bufferInfo
+                    )
+                }
+                if (!RECORD && blockingQueue.isEmpty()) {
+                    break
+                }
+            }
+            mMuxer.stop()
+        }.start()
     }
 }

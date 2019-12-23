@@ -5,10 +5,7 @@ import android.media.MediaCodec.CONFIGURE_FLAG_ENCODE
 import android.media.MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar
 import android.media.MediaFormat
 import android.util.Log
-import com.weibinhwb.mycamera.MediaData
-import com.weibinhwb.mycamera.MediaDataListener
-import com.weibinhwb.mycamera.MediaLifeCycle
-import com.weibinhwb.mycamera.MediaListener
+import com.weibinhwb.mycamera.*
 import com.weibinhwb.mycamera.utils.getPresentationTimeUs
 
 
@@ -61,10 +58,11 @@ class VideoEncoder(private val listener: MediaListener) : MediaDataListener, Med
     }
 
     override fun pushToCodec(array: ByteArray, degree: Int) {
-//        YuvHelper.nv21ToI420(array, mI420Yuv, mWidth, mHeight)
-        NV21toI420SemiPlanar(array, mI420Yuv, mWidth, mHeight)
-//        YuvHelper.i420Rotate(mI420Yuv, mYuvRotate, mWidth, mHeight, degree)
-        mYuvRotate = rotateYUVDegree90(mI420Yuv, mWidth, mHeight)
+        YuvHelper.nv21ToI420(array, mI420Yuv, mWidth, mHeight)
+//        NV21toI420SemiPlanar(array, mI420Yuv, mWidth, mHeight)
+        YuvHelper.i420Rotate(mI420Yuv, mYuvRotate, mWidth, mHeight, degree)
+//        mYuvRotate = rotateYUVDegree90(mI420Yuv, mWidth, mHeight)
+//        mYuvRotate = rotateYUVDegree90(array, mWidth, mHeight)
         processVideoCodec(mYuvRotate)
     }
 
@@ -133,9 +131,8 @@ class VideoEncoder(private val listener: MediaListener) : MediaDataListener, Med
                 yuv[i] = data[imageWidth * imageHeight + y * imageWidth + (x - 1)]
                 i--
             }
-            x = x - 2
+            x -= 2
         }
-
         return yuv
     }
 }

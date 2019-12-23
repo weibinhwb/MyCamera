@@ -7,7 +7,14 @@ import android.media.AudioFormat.ENCODING_PCM_16BIT
 import android.media.AudioManager.AUDIO_SESSION_ID_GENERATE
 import android.media.AudioManager.STREAM_MUSIC
 import android.media.AudioTrack.MODE_STREAM
+import android.util.Log
 import com.weibinhwb.mycamera.MediaLifeCycle
+import com.weibinhwb.mycamera.utils.LogUtil
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileNotFoundException
+import java.io.IOException
+import java.lang.Exception
 
 /**
  * Created by weibin on 2019/8/9
@@ -26,7 +33,11 @@ class AudioDecoder(private val filePath: String) : MediaLifeCycle {
 
     private fun init() {
         mExtractor = MediaExtractor()
-        mExtractor.setDataSource(filePath)
+        LogUtil.d(TAG, "    path = $filePath")
+        val file = File(filePath)
+        val fis = FileInputStream(file)
+        val fd = fis.fd
+        mExtractor.setDataSource(fd)
         for (i in 0 until mExtractor.trackCount) {
             val format = mExtractor.getTrackFormat(i)
             val mime = format.getString(MediaFormat.KEY_MIME)
@@ -39,6 +50,7 @@ class AudioDecoder(private val filePath: String) : MediaLifeCycle {
                 break
             }
         }
+        fis.close()
         val format = mExtractor.getTrackFormat(mTrackIndex)
         val mime = format.getString(MediaFormat.KEY_MIME)
         val sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)

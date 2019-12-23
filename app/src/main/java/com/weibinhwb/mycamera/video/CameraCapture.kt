@@ -1,8 +1,9 @@
 package com.weibinhwb.mycamera.video
 
 import android.app.Activity
-import android.graphics.ImageFormat
 import android.hardware.Camera
+import android.hardware.Camera.Parameters.FOCUS_MODE_AUTO
+import android.hardware.Camera.Parameters.FOCUS_MODE_MACRO
 import android.util.Log
 import android.view.Surface
 import android.view.SurfaceHolder
@@ -18,7 +19,6 @@ import java.lang.ref.WeakReference
  */
 
 
-@Suppress("DEPRECATION")
 class CameraCapture(
     private val weakActivity: WeakReference<Activity>,
     private val listener: MediaDataListener
@@ -29,11 +29,10 @@ class CameraCapture(
     private lateinit var mCamera: Camera
     private val mWidth = 1280
     private val mHeight = 720
-    private var degree: Int =-1
+    private var degree: Int = -1
 
     private val mHolder: SurfaceHolder = holder.apply {
         addCallback(this@CameraCapture)
-        setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS)
     }
 
     override fun prepare() {
@@ -44,12 +43,12 @@ class CameraCapture(
                 Camera.CameraInfo.CAMERA_FACING_BACK
             )
             setDisplayOrientation(degree)
-            val tempParameter = parameters
-            tempParameter.previewFormat = ImageFormat.NV21
-            tempParameter.setPreviewSize(mWidth, mHeight)
-            parameters = tempParameter
+            parameters.setPreviewSize(mWidth, mHeight)
+            parameters.focusMode = FOCUS_MODE_AUTO
             setPreviewCallback(this@CameraCapture)
         }
+        val focusMode = mCamera.parameters.focusMode
+        Log.d("weibin", "focusMode = $focusMode")
     }
 
     override fun start() {
@@ -58,12 +57,12 @@ class CameraCapture(
 
     override fun stop() {
         mCamera.stopPreview()
-//        mCamera.release()
     }
 
 
     override fun onPreviewFrame(data: ByteArray?, camera: Camera?) {
         if (MuxerOperation.RECORD && data != null) {
+            camera!!.addCallbackBuffer(data)
             listener.pushToCodec(data, degree)
         }
     }

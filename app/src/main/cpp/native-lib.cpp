@@ -21,13 +21,6 @@ Java_com_weibinhwb_mycamera_YuvHelper_rotateYUVDegree90(JNIEnv *env, jobject ins
     jbyte *input = env->GetByteArrayElements(input_, NULL);
     jbyte *output = env->GetByteArrayElements(output_, NULL);
 
-//    jsize size = env->GetArrayLength(input_);
-//    NV21ToI420((const uint8_t *) input, width,
-//               (uint8_t *) output + (width * height), width,
-//               (uint8_t *) output + (width * height), width / 2,
-//               (uint8_t *) output + (width * height * 5 / 4), width / 2,
-//               width, height);
-
 
     env->ReleaseByteArrayElements(input_, input, 0);
     env->ReleaseByteArrayElements(output_, output, 0);
@@ -63,8 +56,8 @@ Java_com_weibinhwb_mycamera_YuvHelper_nv21ToI420(JNIEnv *env, jclass type,
     libyuv::NV21ToI420((const uint8 *) nv21_y_data, width,
                        (const uint8 *) nv21_vu_data, width,
                        (uint8 *) i420_y_data, width,
-                       (uint8 *) i420_u_data, width >> 1,
-                       (uint8 *) i420_v_data, width >> 1,
+                       (uint8 *) i420_u_data, (width >> 1),
+                       (uint8 *) i420_v_data, (width >> 1),
                        width, height);
 
     env->ReleaseByteArrayElements(nv21Bytes_, nv21Bytes, 0);
